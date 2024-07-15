@@ -46,8 +46,6 @@ class CubeAttack(EvasionAttack):
         n_trials: int = 100,
         p: float = 0.5,
         independent_delta: bool = False,
-        min_val: float = 0.0,
-        max_val: float = 1.0,
     ) -> None:
         """
         :param estimator: A trained XGBoost classifier.
@@ -63,8 +61,10 @@ class CubeAttack(EvasionAttack):
         self.n_trials = n_trials
         self.p = p
         self.independent_delta = independent_delta
-        self.min_val = min_val
-        self.max_val = max_val
+
+        if self.estimator.clip_values is not None:
+            self.min_val, self.max_val = self.estimator.clip_values
+
         self._check_params()
 
     def generate(self, x: np.ndarray, y: Optional[np.ndarray] = None, **kwargs) -> np.ndarray:
@@ -78,9 +78,9 @@ class CubeAttack(EvasionAttack):
         if y is None:
             y = self.estimator.predict(x)
         y = check_and_transform_label_format(y, nb_classes=self.estimator.nb_classes, return_one_hot=False)
-
-        deltas = self._binary_search(self.cube_attack, self.estimator, x, y, self.n_trials)
-
+        
+        deltas = self._binary_search(self.cube_attack, self.estimator, x, y, self.n_trials,cleanup=False)
+        print(f"\n DELTAS:{deltas}\n")
         return x + deltas
 
     def cube_attack(self, f, X, y, eps, n_trials, p=0.5, deltas_init=None, independent_delta=False, min_val=0.0, max_val=1.0):
@@ -145,7 +145,7 @@ class CubeAttack(EvasionAttack):
         eps_step = 1.0
         for i_iter_bs in range(n_iter_bs):
             f_x_vals, new_deltas = attack(f, X, y, eps, n_trials_attack, p=0.5, deltas_init=deltas, independent_delta=False)
-            print('iter_bs {}: yf={}, eps={}'.format(i_iter_bs, f_x_vals, eps.flatten()))
+            #print('iter_bs {}: yf={}, eps={}'.format(i_iter_bs, f_x_vals, eps.flatten()))
             idx_adv = f_x_vals[:, None] < 0.0  # if adversarial, reduce the eps
             eps = idx_adv * (eps - eps_step/2) + ~idx_adv * (eps + eps_step/2)
             deltas = idx_adv * new_deltas + ~idx_adv * deltas
@@ -174,7 +174,7 @@ class CubeAttack(EvasionAttack):
 
         return deltas
 
-    def _fmargin(self, f, X: np.ndarray, y: np.ndarray) -> np.ndarray:
+    def _fmargin(self, f, X: np.ndarray, y: np.ndarray) -> np   .ndarray:
         """
         Compute the functional margin for the input X and labels y.
         
@@ -185,6 +185,7 @@ class CubeAttack(EvasionAttack):
         """
         y_pred = f._model.predict(X, output_margin=True)
         y = y.reshape(-1)
+        y = np.where(y == 0, -1, y)  # Convert 0 labels to -1 if needed
         return np.exp(-y * y_pred)  # Functional margin: exp(-y * raw score)
 
 

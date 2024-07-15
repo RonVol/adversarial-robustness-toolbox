@@ -18,18 +18,23 @@ class TestCubeAttack(unittest.TestCase):
         model = xgb.XGBClassifier()
         model.fit(X_train, y_train)
 
-        self.classifier = XGBoostClassifier(model=model)
+        min_val = X_train.min()
+        max_val = X_train.max()
+        print(f"Min value in dataset: {min_val}")
+        print(f"Max value in dataset: {max_val}")
+        self.classifier = XGBoostClassifier(model=model, clip_values=(min_val, max_val))
         self.X_test = X_test
         self.y_test = y_test
 
     def test_cube_attack(self):
+        print("********************************************************************\n********************************************************************")
         # Evaluate the original accuracy
         original_preds = np.argmax(self.classifier.predict(self.X_test), axis=1)
         original_accuracy = accuracy_score(self.y_test, original_preds)
         print(f"Original Accuracy: {original_accuracy}")
 
         # Apply the Cube Attack
-        attack = CubeAttack(self.classifier, eps=0.1, n_trials=10)
+        attack = CubeAttack(self.classifier, eps=0.5, n_trials=1)
         X_test_adv = attack.generate(self.X_test, self.y_test)
 
         # Evaluate the adversarial accuracy
@@ -41,20 +46,20 @@ class TestCubeAttack(unittest.TestCase):
         print("Original:", self.X_test[0])
         print("Adversarial:", X_test_adv[0])
 
-        # Plot the original and adversarial examples
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 2, 1)
-        plt.title("Original Example")
-        plt.imshow(self.X_test[0].reshape((15, 2)), cmap='gray')
-        plt.axis('off')
+        # # Plot the original and adversarial examples
+        # plt.figure(figsize=(12, 6))
+        # plt.subplot(1, 2, 1)
+        # plt.title("Original Example")
+        # plt.imshow(self.X_test[0].reshape((15, 2)), cmap='gray')
+        # plt.axis('off')
 
-        plt.subplot(1, 2, 2)
-        plt.title("Adversarial Example")
-        plt.imshow(X_test_adv[0].reshape((15, 2)), cmap='gray')
-        plt.axis('off')
+        # plt.subplot(1, 2, 2)
+        # plt.title("Adversarial Example")
+        # plt.imshow(X_test_adv[0].reshape((15, 2)), cmap='gray')
+        # plt.axis('off')
 
-        plt.tight_layout()
-        plt.show()
+        # plt.tight_layout()
+        # plt.show()
 
 if __name__ == '__main__':
     unittest.main()
