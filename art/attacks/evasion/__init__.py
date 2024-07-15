@@ -70,3 +70,4 @@ from art.attacks.evasion.wasserstein import Wasserstein
 from art.attacks.evasion.zoo import ZooAttack
 from art.attacks.evasion.sign_opt import SignOPTAttack
 from art.attacks.evasion.cube_attack import CubeAttack
+from art.attacks.evasion.sampling_attack import SamplingAttack
